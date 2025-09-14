@@ -21,8 +21,8 @@ const config: Config = {
           900: "#2c3243"
         },
         accent: {
-          500: "#0A84FF",
-          600: "#0066CC"
+          500: "#00c2ff",
+          600: "#0aa1d1"
         }
       },
       boxShadow: {
