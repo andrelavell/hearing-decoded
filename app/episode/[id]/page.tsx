@@ -17,7 +17,7 @@ export default async function EpisodePage({ params }: { params: { id: string } }
 
       {/* Top heading area */}
       <div className="space-y-4">
-        <span className="inline-flex items-center rounded-full bg-accent-500/20 text-accent-500 px-3 py-1 text-xs font-semibold">
+        <span className="inline-flex items-center rounded-full bg-yellow-400 text-black px-3 py-1 text-xs font-semibold">
           Episode
         </span>
         <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-tight text-white max-w-4xl">
@@ -59,10 +59,10 @@ export default async function EpisodePage({ params }: { params: { id: string } }
 
               <div className="mt-5">
                 <div className="text-sm text-white/80 mb-2 flex items-center gap-2">
-                  <span className="inline-flex h-2 w-2 rounded-full bg-accent-500"></span>
+                  <span className="inline-flex h-2 w-2 rounded-full bg-yellow-400"></span>
                   <span className="font-medium">Play episode</span>
                 </div>
-                <AudioPlayer src={ep.audioUrl} captionsVttUrl={ep.captionsVttUrl} variant="inline" />
+                <AudioPlayer src={ep.audioUrl} captionsVttUrl={ep.captionsVttUrl} variant="inline" color="yellow" />
               </div>
 
               <div className="mt-6">
@@ -81,7 +81,7 @@ export default async function EpisodePage({ params }: { params: { id: string } }
 
         {/* Right visual panel */}
         <div className="hidden lg:block">
-          <div className="rounded-3xl p-3 bg-accent-500">
+          <div className="rounded-3xl p-3 bg-yellow-400">
             <div className="rounded-2xl overflow-hidden bg-white/5 aspect-[4/3] flex items-center justify-center">
               {/* Placeholder image */}
               <img
