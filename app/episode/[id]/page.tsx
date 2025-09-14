@@ -12,97 +12,103 @@ export default async function EpisodePage({ params }: { params: { id: string } }
   const created = new Date(ep.createdAt);
 
   return (
-    <div className="space-y-10">
+    <div className="min-h-screen bg-gradient-to-b from-gray-900 to-black text-white">
       <ViewCounter id={params.id} />
+      
+      <div className="container mx-auto px-4 py-8">
+        {/* Episode badge */}
+        <div className="mb-6">
+          <span className="inline-block bg-yellow-400 text-black px-3 py-1 rounded-full text-sm font-semibold">
+            Episode 8
+          </span>
+        </div>
 
-      {/* Top heading area */}
-      <div className="space-y-4">
-        <span className="inline-flex items-center rounded-full bg-yellow-400 text-black px-3 py-1 text-xs font-semibold">
-          Episode
-        </span>
-        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-tight text-white max-w-4xl">
+        {/* Main title */}
+        <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold mb-12 leading-tight max-w-4xl">
           {ep.title}
         </h1>
-      </div>
 
-      {/* Hero content area: left meta + inline player, right visual */}
-      <section className="grid lg:grid-cols-[minmax(0,1fr),420px] gap-8 items-start">
-        {/* Left card */}
-        <div className="card p-6 sm:p-8">
-          <div className="grid gap-6 sm:grid-cols-[120px,1fr]">
-            {/* Square cover */}
-            <div>
-              <div className="aspect-square rounded-2xl bg-gradient-to-br from-accent-500 to-ink-700 shadow-soft flex items-center justify-center">
-                <span className="text-4xl font-extrabold tracking-tight text-black/80">
-                  {ep.title.slice(0,1).toUpperCase()}
-                </span>
+        {/* Two column layout */}
+        <div className="grid lg:grid-cols-2 gap-12 items-start">
+          {/* Left column - Album art and metadata */}
+          <div className="space-y-8">
+            {/* Album art with overlay text */}
+            <div className="relative">
+              <div className="aspect-square bg-gradient-to-br from-teal-400 to-teal-600 rounded-3xl p-8 flex flex-col justify-between text-black">
+                <div className="text-sm font-medium italic">THE</div>
+                <div className="space-y-2">
+                  <div className="text-6xl font-black">BIG</div>
+                  <div className="text-4xl font-bold">DECISION</div>
+                </div>
+                <div className="w-16 h-16 bg-black/20 rounded-full flex items-center justify-center ml-auto">
+                  <div className="w-12 h-12 bg-white rounded-full"></div>
+                </div>
               </div>
             </div>
 
-            {/* Meta and player */}
-            <div className="min-w-0">
-              <dl className="text-sm text-white/80 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="flex items-center gap-2">
-                  <dt className="text-white/60">Published on:</dt>
-                  <dd>{format(created, "MMM d, yyyy")}</dd>
-                </div>
-                <div className="flex items-center gap-2">
-                  <dt className="text-white/60">Duration:</dt>
-                  <dd>{typeof ep.duration === 'number' ? `${Math.floor(ep.duration / 60)} min` : '—'}</dd>
-                </div>
-                <div className="sm:col-span-2 flex items-center gap-3">
-                  <Stars value={ep.rating} />
-                  <span className="text-white/40">•</span>
-                  <span>{ep.views.toLocaleString()} views</span>
-                </div>
-              </dl>
+            {/* Metadata */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 text-white/80">
+                <span className="w-2 h-2 bg-yellow-400 rounded-full"></span>
+                <span className="text-sm">Published on: {format(created, "MMM d, yyyy")}</span>
+              </div>
+              
+              <div className="flex items-center gap-2 text-white/80">
+                <span className="w-2 h-2 bg-yellow-400 rounded-full"></span>
+                <span className="text-sm">{typeof ep.duration === 'number' ? `${Math.floor(ep.duration / 60)}min` : '1hr 05min'}</span>
+              </div>
 
-              <div className="mt-5">
-                <div className="text-sm text-white/80 mb-2 flex items-center gap-2">
-                  <span className="inline-flex h-2 w-2 rounded-full bg-yellow-400"></span>
-                  <span className="font-medium">Play episode</span>
-                </div>
+              {/* Play button */}
+              <div className="flex items-center gap-4 mt-6">
+                <button className="bg-yellow-400 text-black w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg hover:bg-yellow-300 transition-colors">
+                  ▶
+                </button>
+                <span className="font-semibold">Play episode</span>
+              </div>
+
+              {/* Inline player */}
+              <div className="mt-4">
                 <AudioPlayer src={ep.audioUrl} captionsVttUrl={ep.captionsVttUrl} variant="inline" color="yellow" />
               </div>
 
-              <div className="mt-6">
-                <div className="text-sm text-white/70 mb-2">Listen on:</div>
-                <div className="flex items-center gap-2">
-                  <span className="h-7 w-7 rounded-full bg-gradient-to-br from-pink-500 to-purple-600" title="Apple"></span>
-                  <span className="h-7 w-7 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600" title="Instagram"></span>
-                  <span className="h-7 w-7 rounded-full bg-green-500" title="Spotify"></span>
-                  <span className="h-7 w-7 rounded-full bg-emerald-500" title="RSS"></span>
-                  <span className="h-7 w-7 rounded-full bg-yellow-400" title="Other"></span>
+              {/* Listen on platforms */}
+              <div className="mt-8">
+                <div className="text-sm text-white/70 mb-3">Listen on:</div>
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full" title="Apple Podcasts"></div>
+                  <div className="w-8 h-8 bg-orange-500 rounded-full" title="Overcast"></div>
+                  <div className="w-8 h-8 bg-blue-500 rounded-full" title="Castro"></div>
+                  <div className="w-8 h-8 bg-green-500 rounded-full" title="Spotify"></div>
+                  <div className="w-8 h-8 bg-gray-600 rounded-full" title="More"></div>
                 </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right column - Host image */}
+          <div className="lg:block">
+            <div className="bg-yellow-400 p-4 rounded-3xl">
+              <div className="aspect-[4/3] rounded-2xl overflow-hidden">
+                <img
+                  src={`https://picsum.photos/seed/host-${ep.id}/600/450`}
+                  alt="Podcast host"
+                  className="w-full h-full object-cover"
+                />
               </div>
             </div>
           </div>
         </div>
 
-        {/* Right visual panel */}
-        <div className="hidden lg:block">
-          <div className="rounded-3xl p-3 bg-yellow-400">
-            <div className="rounded-2xl overflow-hidden bg-white/5 aspect-[4/3] flex items-center justify-center">
-              {/* Placeholder image */}
-              <img
-                src={`https://picsum.photos/seed/${ep.id}/800/600`}
-                alt="Episode visual"
-                className="w-full h-full object-cover"
-              />
+        {/* Episode Description */}
+        {ep.body && (
+          <div className="mt-16">
+            <h2 className="text-2xl font-bold mb-6">Episode Description</h2>
+            <div className="prose prose-invert max-w-none">
+              <p className="text-white/80 leading-relaxed text-lg whitespace-pre-wrap">{ep.body}</p>
             </div>
           </div>
-        </div>
-      </section>
-
-      {/* Description */}
-      {ep.body && (
-        <section className="card p-6 sm:p-8">
-          <h2 className="text-xl font-semibold mb-3">Episode Description</h2>
-          <article className="max-w-none">
-            <p className="whitespace-pre-wrap text-white/80 leading-relaxed">{ep.body}</p>
-          </article>
-        </section>
-      )}
+        )}
+      </div>
     </div>
   );
 }
