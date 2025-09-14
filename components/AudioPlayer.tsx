@@ -293,8 +293,8 @@ export default function AudioPlayer({
         <button
           onClick={toggle}
           className={clsx(
-            "inline-flex items-center justify-center rounded-full w-16 h-16 sm:w-20 sm:h-20",
-            "bg-accent-500 text-white shadow-soft hover:brightness-95"
+            "inline-flex items-center justify-center rounded-xl w-16 h-16 sm:w-20 sm:h-20",
+            "bg-accent-500 text-white shadow-soft hover:brightness-95 ring-1 ring-accent-500/30 ring-offset-2 ring-offset-white"
           )}
           aria-label={playing ? "Pause" : "Play"}
           title={playing ? "Pause (Space)" : "Play (Space)"}

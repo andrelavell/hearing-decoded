@@ -10,6 +10,13 @@ export type Episode = {
   createdAt: string; // ISO
   updatedAt: string; // ISO
   duration?: number; // seconds
+  // Academic metadata (optional)
+  authors?: { name: string; credentials?: string; affiliation?: string }[];
+  permalink?: string; // stable URL
+  doi?: string; // digital object identifier
+  keyPoints?: string[];
+  references?: string[];
+  license?: string;
 };
 
 export type NewEpisodeInput = {
