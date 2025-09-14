@@ -60,10 +60,12 @@ export default function AudioPlayer({
   src,
   captionsVttUrl,
   onDuration,
+  variant = "full",
 }: {
   src: string;
   captionsVttUrl?: string;
   onDuration?: (d: number) => void;
+  variant?: "full" | "inline";
 }) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [playing, setPlaying] = useState(false);
@@ -140,31 +142,103 @@ export default function AudioPlayer({
     a.volume = volume;
   }, [volume]);
 
+  // Inline compact UI
+  if (variant === "inline") {
+    return (
+      <div className="rounded-xl bg-white/5 border border-white/10 p-4">
+        <audio ref={audioRef} src={src} preload="metadata" />
+        <div className="flex items-center gap-4">
+          <button
+            onClick={toggle}
+            className={clsx(
+              "inline-flex items-center justify-center rounded-full w-12 h-12",
+              "bg-accent-500 text-black shadow-soft hover:brightness-95"
+            )}
+            aria-label={playing ? "Pause" : "Play"}
+          >
+            {playing ? (
+              <span className="text-base font-bold">❚❚</span>
+            ) : (
+              <span className="text-base font-bold">▶</span>
+            )}
+          </button>
+
+          <div className="flex-1 min-w-0">
+            <input
+              type="range"
+              min={0}
+              max={duration || 0}
+              step={0.1}
+              value={current}
+              onChange={(e) => seek(parseFloat(e.target.value))}
+              className="w-full accent-accent-500 h-1.5"
+              aria-label="Scrubber"
+            />
+            <div className="mt-1 flex items-center justify-between text-[11px] text-white/60">
+              <span>{formatTime(current)}</span>
+              <span>{formatTime(duration)}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Full player UI
   return (
-    <div className="rounded-3xl border border-white/10 bg-white/5 p-5 sm:p-6 backdrop-blur">
+    <div className="card p-6 sm:p-8">
       <audio ref={audioRef} src={src} preload="metadata" />
 
-      {/* Scrubber */}
-      <div className="flex items-center justify-between text-xs text-white/60">
-        <span>{formatTime(current)}</span>
-        <span>{formatTime(duration)}</span>
+      {/* Subtitles panel */}
+      <div className="mb-6 sm:mb-8">
+        <div className="flex items-center justify-between">
+          <div className="text-sm font-medium text-white/80">Subtitles</div>
+          {captionsVttUrl ? (
+            <button
+              onClick={() => setShowCaptions((v) => !v)}
+              className={clsx(
+                "inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm",
+                showCaptions ? "bg-accent-500 text-black" : "bg-white/5 text-white/80 hover:bg-white/10"
+              )}
+              aria-pressed={showCaptions}
+              aria-label="Toggle captions"
+            >
+              <span className="font-semibold">CC</span>
+            </button>
+          ) : (
+            <span className="text-xs text-white/40">No captions</span>
+          )}
+        </div>
+        <div className="mt-3 rounded-xl border border-white/10 bg-white/5 p-4 min-h-[64px]">
+          <div className="text-base leading-relaxed whitespace-pre-wrap text-white/90">
+            {showCaptions ? (activeCue || "…") : "Captions hidden"}
+          </div>
+        </div>
       </div>
-      <input
-        type="range"
-        min={0}
-        max={duration || 0}
-        step={0.1}
-        value={current}
-        onChange={(e) => seek(parseFloat(e.target.value))}
-        className="mt-2 w-full accent-accent-500 h-1.5"
-        aria-label="Scrubber"
-      />
 
-      {/* Transport */}
-      <div className="mt-5 flex items-center justify-center gap-6">
+      {/* Time + scrubber */}
+      <div className="flex items-center justify-between text-xs text-white/60">
+        <div>{formatTime(current)}</div>
+        <div>{formatTime(duration)}</div>
+      </div>
+      <div className="mt-2 sm:mt-3">
+        <input
+          type="range"
+          min={0}
+          max={duration || 0}
+          step={0.1}
+          value={current}
+          onChange={(e) => seek(parseFloat(e.target.value))}
+          className="w-full accent-accent-500 h-1.5"
+          aria-label="Scrubber"
+        />
+      </div>
+
+      {/* Transport controls */}
+      <div className="mt-6 sm:mt-8 flex items-center justify-center gap-8">
         <button
           onClick={() => skip(-15)}
-          className="hidden sm:inline-flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 w-10 h-10 text-xs"
+          className="hidden sm:inline-flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 w-12 h-12 text-sm"
           aria-label="Back 15 seconds"
         >
           ◄ 15
@@ -173,7 +247,7 @@ export default function AudioPlayer({
         <button
           onClick={toggle}
           className={clsx(
-            "inline-flex items-center justify-center rounded-full w-16 h-16",
+            "inline-flex items-center justify-center rounded-full w-16 h-16 sm:w-20 sm:h-20",
             "bg-accent-500 text-black shadow-soft hover:brightness-95"
           )}
           aria-label={playing ? "Pause" : "Play"}
@@ -187,64 +261,40 @@ export default function AudioPlayer({
 
         <button
           onClick={() => skip(30)}
-          className="hidden sm:inline-flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 w-10 h-10 text-xs"
+          className="hidden sm:inline-flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 w-12 h-12 text-sm"
           aria-label="Forward 30 seconds"
         >
           30 ►
         </button>
       </div>
 
-      {/* Compact Controls */}
-      <div className="mt-5 flex flex-wrap items-center justify-center gap-3 text-sm">
-        <button
-          onClick={() => setSpeed((prev) => {
-            const opts = [0.75, 1, 1.25, 1.5, 1.75, 2];
-            const i = opts.indexOf(prev);
-            return opts[(i + 1) % opts.length];
-          })}
-          className="px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10"
-          aria-label="Change speed"
-        >
-          {speed.toFixed(2).replace(/\.00$/, "")}x
-        </button>
+      {/* Settings */}
+      <div className="mt-6 sm:mt-8 flex flex-wrap items-center justify-center gap-4 text-sm">
+        <label className="inline-flex items-center gap-2 bg-white/5 rounded-full px-3 py-1.5">
+          <span className="text-white/70">Speed</span>
+          <select
+            value={speed}
+            onChange={(e) => setSpeed(parseFloat(e.target.value))}
+            className="bg-transparent outline-none"
+          >
+            {[0.75, 1, 1.25, 1.5, 1.75, 2].map((s) => (
+              <option key={s} value={s}>{s}x</option>
+            ))}
+          </select>
+        </label>
 
-        <div className="inline-flex items-center gap-2 bg-white/5 rounded-full px-3 py-1.5">
-          <span className="text-white/70">Vol</span>
+        <label className="inline-flex items-center gap-2 bg-white/5 rounded-full px-3 py-1.5">
+          <span className="text-white/70">Volume</span>
           <input
-            aria-label="Volume"
             type="range"
             min={0}
             max={1}
             step={0.01}
             value={volume}
             onChange={(e) => setVolume(parseFloat(e.target.value))}
-            className="w-24"
           />
-        </div>
-
-        {captionsVttUrl ? (
-          <button
-            onClick={() => setShowCaptions((v) => !v)}
-            className={clsx(
-              "px-3 py-1.5 rounded-full",
-              showCaptions ? "bg-accent-500 text-black" : "bg-white/5 text-white/80 hover:bg-white/10"
-            )}
-            aria-pressed={showCaptions}
-            aria-label="Toggle captions"
-          >
-            CC
-          </button>
-        ) : (
-          <span className="text-xs text-white/40">No CC</span>
-        )}
+        </label>
       </div>
-
-      {/* Live Caption, single line */}
-      {showCaptions && (
-        <div className="mt-4 text-center text-base leading-relaxed text-white/90">
-          <div className="truncate">{activeCue || ""}</div>
-        </div>
-      )}
     </div>
   );
 }
