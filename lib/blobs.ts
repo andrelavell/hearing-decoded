@@ -57,8 +57,8 @@ export async function saveEpisode(ep: Episode): Promise<void> {
     duration: ep.duration,
   };
   await Promise.all([
-    store.set(`items/${ep.id}.json`, JSON.stringify(ep), { contentType: "application/json" }),
-    store.set("index.json", JSON.stringify(await mergeIndex(lite)), { contentType: "application/json" }),
+    store.set(`items/${ep.id}.json`, JSON.stringify(ep)),
+    store.set("index.json", JSON.stringify(await mergeIndex(lite))),
   ]);
 }
 
@@ -80,6 +80,6 @@ export async function deleteEpisode(id: string) {
   const filtered = (current ?? []).filter((x) => x.id !== id);
   await Promise.all([
     store.delete(`items/${id}.json`),
-    store.set("index.json", JSON.stringify(filtered), { contentType: "application/json" }),
+    store.set("index.json", JSON.stringify(filtered)),
   ]);
 }

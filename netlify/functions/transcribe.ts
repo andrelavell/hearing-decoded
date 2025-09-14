@@ -41,14 +41,14 @@ export const handler: Handler = async (event) => {
     const file = await toFile(Buffer.from(arrayBuffer), "audio.mp3", { type: "audio/mpeg" });
 
     // Whisper transcription (verbose for segments)
-    const tr = await openai.audio.transcriptions.create({
+    const tr: any = await openai.audio.transcriptions.create({
       file,
       model: "whisper-1",
       response_format: "verbose_json"
     } as any);
 
     // Build VTT
-    const segments: Array<{ start: number; end: number; text: string }> = (tr.segments || []).map((s: any) => ({
+    const segments: Array<{ start: number; end: number; text: string }> = ((tr && tr.segments) || []).map((s: any) => ({
       start: s.start,
       end: s.end,
       text: s.text,
