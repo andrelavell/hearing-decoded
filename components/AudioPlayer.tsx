@@ -19,7 +19,6 @@ function parseVtt(vtt: string): Cue[] {
       i++;
       continue;
     }
-    // Optional cue id line
     const maybeTime = lines[i + 1] ? lines[i + 1].trim() : "";
     const timeLine = /-->/.test(line) ? line : maybeTime;
     const timeIdx = /-->/.test(line) ? i : i + 1;
@@ -56,6 +55,43 @@ function formatTime(sec: number) {
   return h > 0 ? `${h}:${m.padStart(2, "0")}:${s}` : `${m}:${s}`;
 }
 
+// Modern icons as SVG components
+const PlayIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M8 5v14l11-7z"/>
+  </svg>
+);
+
+const PauseIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>
+  </svg>
+);
+
+const SkipBackIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M11 18V6l-8.5 6 8.5 6zm.5-6l8.5 6V6l-8.5 6z"/>
+  </svg>
+);
+
+const SkipForwardIcon = () => (
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M4 18l8.5-6L4 6v12zm9-12v12l8.5-6L13 6z"/>
+  </svg>
+);
+
+const VolumeIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+  </svg>
+);
+
+const CaptionsIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M19 4H5c-1.11 0-2 .9-2 2v12c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-8 7H9.5v-.5h-2v3h2V13H11v1c0 .55-.45 1-1 1H7c-.55 0-1-.45-1-1v-4c0-.55.45-1 1-1h3c.55 0 1 .45 1 1v1zm7 0h-1.5v-.5h-2v3h2V13H18v1c0 .55-.45 1-1 1h-3c-.55 0-1-.45-1-1v-4c0-.55.45-1 1-1h3c.55 0 1 .45 1 1v1z"/>
+  </svg>
+);
+
 export default function AudioPlayer({
   src,
   captionsVttUrl,
@@ -73,8 +109,10 @@ export default function AudioPlayer({
   const [volume, setVolume] = useState(1);
   const [cues, setCues] = useState<Cue[]>([]);
   const [showCaptions, setShowCaptions] = useState(!!captionsVttUrl);
+  const [loading, setLoading] = useState(false);
 
   const activeCue = useMemo(() => cues.find((c) => current >= c.start && current <= c.end)?.text ?? "", [cues, current]);
+  const progress = duration > 0 ? (current / duration) * 100 : 0;
 
   useEffect(() => {
     const a = audioRef.current;
@@ -82,16 +120,22 @@ export default function AudioPlayer({
     const onLoaded = () => {
       setDuration(a.duration || 0);
       onDuration?.(a.duration || 0);
+      setLoading(false);
     };
     const onTime = () => setCurrent(a.currentTime || 0);
     const onEnd = () => setPlaying(false);
+    const onLoadStart = () => setLoading(true);
+    
     a.addEventListener("loadedmetadata", onLoaded);
     a.addEventListener("timeupdate", onTime);
     a.addEventListener("ended", onEnd);
+    a.addEventListener("loadstart", onLoadStart);
+    
     return () => {
       a.removeEventListener("loadedmetadata", onLoaded);
       a.removeEventListener("timeupdate", onTime);
       a.removeEventListener("ended", onEnd);
+      a.removeEventListener("loadstart", onLoadStart);
     };
   }, [onDuration]);
 
@@ -103,7 +147,6 @@ export default function AudioPlayer({
       .catch(() => setCues([]));
   }, [captionsVttUrl]);
 
-  // Keep captions toggle consistent if prop changes
   useEffect(() => {
     setShowCaptions(!!captionsVttUrl);
   }, [captionsVttUrl]);
@@ -119,6 +162,7 @@ export default function AudioPlayer({
       setPlaying(false);
     }
   };
+
   const seek = (t: number) => {
     const a = audioRef.current;
     if (!a) return;
@@ -141,114 +185,165 @@ export default function AudioPlayer({
   }, [volume]);
 
   return (
-    <div className="card p-6 sm:p-8">
+    <div className="card-elevated p-8 sm:p-10 max-w-4xl mx-auto">
       <audio ref={audioRef} src={src} preload="metadata" />
 
-      {/* Subtitles panel */}
-      <div className="mb-6 sm:mb-8">
-        <div className="flex items-center justify-between">
-          <div className="text-sm font-medium text-white/80">Subtitles</div>
-          {captionsVttUrl ? (
+      {/* Captions Display */}
+      {captionsVttUrl && (
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-slate-800">Live Transcript</h3>
             <button
               onClick={() => setShowCaptions((v) => !v)}
               className={clsx(
-                "inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm",
-                showCaptions ? "bg-accent-500 text-black" : "bg-white/5 text-white/80 hover:bg-white/10"
+                "inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition-all duration-200",
+                showCaptions 
+                  ? "bg-primary-500 text-white shadow-lg hover:bg-primary-600" 
+                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
               )}
               aria-pressed={showCaptions}
               aria-label="Toggle captions"
             >
-              <span className="font-semibold">CC</span>
+              <CaptionsIcon />
+              <span>{showCaptions ? "Hide" : "Show"} Captions</span>
             </button>
-          ) : (
-            <span className="text-xs text-white/40">No captions</span>
+          </div>
+          
+          {showCaptions && (
+            <div className="rounded-2xl bg-gradient-to-br from-slate-50 to-white border border-slate-200 p-6 min-h-[120px] shadow-inner">
+              <div className="text-lg leading-relaxed text-slate-700 font-medium">
+                {activeCue || (
+                  <span className="text-slate-400 italic">
+                    {loading ? "Loading transcript..." : "Transcript will appear here as the episode plays"}
+                  </span>
+                )}
+              </div>
+            </div>
           )}
         </div>
-        <div className="mt-3 rounded-xl border border-white/10 bg-white/5 p-4 min-h-[64px]">
-          <div className="text-base leading-relaxed whitespace-pre-wrap text-white/90">
-            {showCaptions ? (activeCue || "…") : "Captions hidden"}
+      )}
+
+      {/* Progress Bar */}
+      <div className="mb-8">
+        <div className="flex items-center justify-between text-sm font-medium text-slate-600 mb-3">
+          <span>{formatTime(current)}</span>
+          <span className="text-slate-400">•</span>
+          <span>{formatTime(duration)}</span>
+        </div>
+        
+        <div className="relative">
+          <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-gradient-to-r from-primary-500 to-primary-600 rounded-full transition-all duration-150 ease-out"
+              style={{ width: `${progress}%` }}
+            />
           </div>
+          <input
+            type="range"
+            min={0}
+            max={duration || 0}
+            step={0.1}
+            value={current}
+            onChange={(e) => seek(parseFloat(e.target.value))}
+            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+            aria-label="Seek audio position"
+          />
         </div>
       </div>
 
-      {/* Time + scrubber */}
-      <div className="flex items-center justify-between text-xs text-white/60">
-        <div>{formatTime(current)}</div>
-        <div>{formatTime(duration)}</div>
-      </div>
-      <div className="mt-2 sm:mt-3">
-        <input
-          type="range"
-          min={0}
-          max={duration || 0}
-          step={0.1}
-          value={current}
-          onChange={(e) => seek(parseFloat(e.target.value))}
-          className="w-full accent-accent-500 h-1.5"
-          aria-label="Scrubber"
-        />
-      </div>
-
-      {/* Transport controls */}
-      <div className="mt-6 sm:mt-8 flex items-center justify-center gap-8">
+      {/* Main Controls */}
+      <div className="flex items-center justify-center gap-6 mb-8">
         <button
           onClick={() => skip(-15)}
-          className="hidden sm:inline-flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 w-12 h-12 text-sm"
-          aria-label="Back 15 seconds"
+          className="flex items-center justify-center w-12 h-12 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 transition-all duration-200 hover:shadow-md"
+          aria-label="Rewind 15 seconds"
         >
-          ◄ 15
+          <SkipBackIcon />
+          <span className="text-xs font-bold ml-1">15</span>
         </button>
 
         <button
           onClick={toggle}
+          disabled={loading}
           className={clsx(
-            "inline-flex items-center justify-center rounded-full w-16 h-16 sm:w-20 sm:h-20",
-            "bg-accent-500 text-black shadow-soft hover:brightness-95"
+            "flex items-center justify-center w-20 h-20 rounded-full transition-all duration-200 shadow-xl hover:shadow-2xl",
+            loading 
+              ? "bg-slate-300 cursor-not-allowed" 
+              : "bg-gradient-to-br from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 text-white hover:scale-105"
           )}
           aria-label={playing ? "Pause" : "Play"}
         >
-          {playing ? (
-            <span className="text-xl font-bold">❚❚</span>
+          {loading ? (
+            <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
+          ) : playing ? (
+            <PauseIcon />
           ) : (
-            <span className="text-xl font-bold">▶</span>
+            <PlayIcon />
           )}
         </button>
 
         <button
           onClick={() => skip(30)}
-          className="hidden sm:inline-flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 w-12 h-12 text-sm"
-          aria-label="Forward 30 seconds"
+          className="flex items-center justify-center w-12 h-12 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 transition-all duration-200 hover:shadow-md"
+          aria-label="Fast forward 30 seconds"
         >
-          30 ►
+          <span className="text-xs font-bold mr-1">30</span>
+          <SkipForwardIcon />
         </button>
       </div>
 
-      {/* Settings */}
-      <div className="mt-6 sm:mt-8 flex flex-wrap items-center justify-center gap-4 text-sm">
-        <label className="inline-flex items-center gap-2 bg-white/5 rounded-full px-3 py-1.5">
-          <span className="text-white/70">Speed</span>
+      {/* Secondary Controls */}
+      <div className="flex items-center justify-center gap-8 text-sm">
+        {/* Speed Control */}
+        <div className="flex items-center gap-3">
+          <span className="text-slate-600 font-medium">Speed</span>
           <select
             value={speed}
             onChange={(e) => setSpeed(parseFloat(e.target.value))}
-            className="bg-transparent outline-none"
+            className="bg-slate-100 border border-slate-200 rounded-lg px-3 py-2 text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
           >
-            {[0.75, 1, 1.25, 1.5, 1.75, 2].map((s) => (
-              <option key={s} value={s}>{s}x</option>
+            {[0.5, 0.75, 1, 1.25, 1.5, 1.75, 2].map((s) => (
+              <option key={s} value={s}>{s}×</option>
             ))}
           </select>
-        </label>
+        </div>
 
-        <label className="inline-flex items-center gap-2 bg-white/5 rounded-full px-3 py-1.5">
-          <span className="text-white/70">Volume</span>
-          <input
-            type="range"
-            min={0}
-            max={1}
-            step={0.01}
-            value={volume}
-            onChange={(e) => setVolume(parseFloat(e.target.value))}
-          />
-        </label>
+        {/* Volume Control */}
+        <div className="flex items-center gap-3">
+          <VolumeIcon />
+          <div className="relative w-24">
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.01}
+              value={volume}
+              onChange={(e) => setVolume(parseFloat(e.target.value))}
+              className="w-full h-2 bg-slate-200 rounded-full appearance-none cursor-pointer slider"
+              aria-label="Volume"
+            />
+            <style jsx>{`
+              .slider::-webkit-slider-thumb {
+                appearance: none;
+                height: 16px;
+                width: 16px;
+                border-radius: 50%;
+                background: #3b82f6;
+                cursor: pointer;
+                box-shadow: 0 2px 6px rgba(59, 130, 246, 0.4);
+              }
+              .slider::-moz-range-thumb {
+                height: 16px;
+                width: 16px;
+                border-radius: 50%;
+                background: #3b82f6;
+                cursor: pointer;
+                border: none;
+                box-shadow: 0 2px 6px rgba(59, 130, 246, 0.4);
+              }
+            `}</style>
+          </div>
+        </div>
       </div>
     </div>
   );
