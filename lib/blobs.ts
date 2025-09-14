@@ -17,15 +17,43 @@ function blobsAvailable() {
   }
 }
 
+function remoteBaseUrl() {
+  const base = process.env.REMOTE_API_URL || process.env.SITE_BASE_URL || process.env.URL;
+  return base?.replace(/\/$/, "");
+}
+
 export async function listEpisodes(): Promise<Omit<Episode, "body">[]> {
-  if (!blobsAvailable()) return inMemory.index;
+  if (!blobsAvailable()) {
+    const remote = remoteBaseUrl();
+    if (remote) {
+      try {
+        const res = await fetch(`${remote}/api/episodes`, { cache: "no-store" });
+        if (res.ok) return (await res.json()) as Omit<Episode, "body">[];
+      } catch {
+        // ignore and fall through to in-memory
+      }
+    }
+    return inMemory.index;
+  }
   const store = getStore({ name: STORE_NAME });
   const index = await store.get("index.json", { type: "json" });
   return (index as any) ?? [];
 }
 
 export async function getEpisode(id: string): Promise<Episode | null> {
-  if (!blobsAvailable()) return inMemory.items.get(id) ?? null;
+  if (!blobsAvailable()) {
+    const remote = remoteBaseUrl();
+    if (remote) {
+      try {
+        const res = await fetch(`${remote}/api/episodes/${id}`, { cache: "no-store" });
+        if (res.ok) return (await res.json()) as Episode;
+        if (res.status === 404) return null;
+      } catch {
+        // ignore and fall through
+      }
+    }
+    return inMemory.items.get(id) ?? null;
+  }
   const store = getStore({ name: STORE_NAME });
   const ep = await store.get(`items/${id}.json`, { type: "json" });
   return (ep as any) ?? null;
