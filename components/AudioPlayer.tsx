@@ -72,6 +72,7 @@ export default function AudioPlayer({
   const [speed, setSpeed] = useState(1);
   const [volume, setVolume] = useState(1);
   const [cues, setCues] = useState<Cue[]>([]);
+  const [showCaptions, setShowCaptions] = useState(!!captionsVttUrl);
 
   const activeCue = useMemo(() => cues.find((c) => current >= c.start && current <= c.end)?.text ?? "", [cues, current]);
 
@@ -100,6 +101,11 @@ export default function AudioPlayer({
       .then((r) => r.text())
       .then((t) => setCues(parseVtt(t)))
       .catch(() => setCues([]));
+  }, [captionsVttUrl]);
+
+  // Keep captions toggle consistent if prop changes
+  useEffect(() => {
+    setShowCaptions(!!captionsVttUrl);
   }, [captionsVttUrl]);
 
   const toggle = () => {
@@ -135,16 +141,42 @@ export default function AudioPlayer({
   }, [volume]);
 
   return (
-    <div className="card p-6">
+    <div className="card p-6 sm:p-8">
       <audio ref={audioRef} src={src} preload="metadata" />
-      <div className="flex items-center gap-3">
-        <button onClick={() => skip(-15)} className="px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10" aria-label="Back 15 seconds">⏪ 15s</button>
-        <button onClick={toggle} className={clsx("px-4 py-2 rounded-lg bg-accent-500 text-black font-semibold", !playing && "shadow-soft hover:brightness-95")}>{playing ? "Pause" : "Play"}</button>
-        <button onClick={() => skip(30)} className="px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10" aria-label="Forward 30 seconds">30s ⏩</button>
-        <div className="ml-auto text-sm text-white/70">{formatTime(current)} / {formatTime(duration)}</div>
+
+      {/* Subtitles panel */}
+      <div className="mb-6 sm:mb-8">
+        <div className="flex items-center justify-between">
+          <div className="text-sm font-medium text-white/80">Subtitles</div>
+          {captionsVttUrl ? (
+            <button
+              onClick={() => setShowCaptions((v) => !v)}
+              className={clsx(
+                "inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm",
+                showCaptions ? "bg-accent-500 text-black" : "bg-white/5 text-white/80 hover:bg-white/10"
+              )}
+              aria-pressed={showCaptions}
+              aria-label="Toggle captions"
+            >
+              <span className="font-semibold">CC</span>
+            </button>
+          ) : (
+            <span className="text-xs text-white/40">No captions</span>
+          )}
+        </div>
+        <div className="mt-3 rounded-xl border border-white/10 bg-white/5 p-4 min-h-[64px]">
+          <div className="text-base leading-relaxed whitespace-pre-wrap text-white/90">
+            {showCaptions ? (activeCue || "…") : "Captions hidden"}
+          </div>
+        </div>
       </div>
 
-      <div className="mt-4">
+      {/* Time + scrubber */}
+      <div className="flex items-center justify-between text-xs text-white/60">
+        <div>{formatTime(current)}</div>
+        <div>{formatTime(duration)}</div>
+      </div>
+      <div className="mt-2 sm:mt-3">
         <input
           type="range"
           min={0}
@@ -152,27 +184,71 @@ export default function AudioPlayer({
           step={0.1}
           value={current}
           onChange={(e) => seek(parseFloat(e.target.value))}
-          className="w-full accent-accent-500"
+          className="w-full accent-accent-500 h-1.5"
           aria-label="Scrubber"
         />
       </div>
 
-      <div className="mt-4 flex items-center gap-4 text-sm">
-        <label className="flex items-center gap-2">Speed
-          <select value={speed} onChange={(e) => setSpeed(parseFloat(e.target.value))} className="bg-white/5 rounded-md px-2 py-1">
+      {/* Transport controls */}
+      <div className="mt-6 sm:mt-8 flex items-center justify-center gap-8">
+        <button
+          onClick={() => skip(-15)}
+          className="hidden sm:inline-flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 w-12 h-12 text-sm"
+          aria-label="Back 15 seconds"
+        >
+          ◄ 15
+        </button>
+
+        <button
+          onClick={toggle}
+          className={clsx(
+            "inline-flex items-center justify-center rounded-full w-16 h-16 sm:w-20 sm:h-20",
+            "bg-accent-500 text-black shadow-soft hover:brightness-95"
+          )}
+          aria-label={playing ? "Pause" : "Play"}
+        >
+          {playing ? (
+            <span className="text-xl font-bold">❚❚</span>
+          ) : (
+            <span className="text-xl font-bold">▶</span>
+          )}
+        </button>
+
+        <button
+          onClick={() => skip(30)}
+          className="hidden sm:inline-flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 w-12 h-12 text-sm"
+          aria-label="Forward 30 seconds"
+        >
+          30 ►
+        </button>
+      </div>
+
+      {/* Settings */}
+      <div className="mt-6 sm:mt-8 flex flex-wrap items-center justify-center gap-4 text-sm">
+        <label className="inline-flex items-center gap-2 bg-white/5 rounded-full px-3 py-1.5">
+          <span className="text-white/70">Speed</span>
+          <select
+            value={speed}
+            onChange={(e) => setSpeed(parseFloat(e.target.value))}
+            className="bg-transparent outline-none"
+          >
             {[0.75, 1, 1.25, 1.5, 1.75, 2].map((s) => (
               <option key={s} value={s}>{s}x</option>
             ))}
           </select>
         </label>
-        <label className="flex items-center gap-2">Volume
-          <input type="range" min={0} max={1} step={0.01} value={volume} onChange={(e) => setVolume(parseFloat(e.target.value))} />
-        </label>
-      </div>
 
-      <div className="mt-6 min-h-[56px] text-center text-white/90 bg-white/5 rounded-xl p-3">
-        <div className="text-sm uppercase tracking-wider text-white/50 mb-1">Live captions</div>
-        <div className="text-base leading-relaxed whitespace-pre-wrap">{activeCue || "…"}</div>
+        <label className="inline-flex items-center gap-2 bg-white/5 rounded-full px-3 py-1.5">
+          <span className="text-white/70">Volume</span>
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.01}
+            value={volume}
+            onChange={(e) => setVolume(parseFloat(e.target.value))}
+          />
+        </label>
       </div>
     </div>
   );
