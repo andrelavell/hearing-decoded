@@ -2,7 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
-const s3 = new S3Client({ region: process.env.AWS_S3_REGION });
+const accessKeyId = process.env.AWS_S3_ACCESS_KEY_ID || process.env.AWS_ACCESS_KEY_ID;
+const secretAccessKey = process.env.AWS_S3_SECRET_ACCESS_KEY || process.env.AWS_SECRET_ACCESS_KEY;
+const s3 = new S3Client({
+  region: process.env.AWS_S3_REGION,
+  credentials: accessKeyId && secretAccessKey ? { accessKeyId, secretAccessKey } : undefined,
+});
 
 export async function POST(req: NextRequest) {
   const { filename, contentType } = await req.json();
