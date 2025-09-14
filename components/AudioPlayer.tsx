@@ -61,11 +61,13 @@ export default function AudioPlayer({
   captionsVttUrl,
   onDuration,
   variant = "full",
+  color = "accent",
 }: {
   src: string;
   captionsVttUrl?: string;
   onDuration?: (d: number) => void;
   variant?: "full" | "inline";
+  color?: "accent" | "yellow";
 }) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [playing, setPlaying] = useState(false);
@@ -152,7 +154,9 @@ export default function AudioPlayer({
             onClick={toggle}
             className={clsx(
               "inline-flex items-center justify-center rounded-full w-12 h-12",
-              "bg-accent-500 text-black shadow-soft hover:brightness-95"
+              color === "yellow"
+                ? "bg-yellow-400 text-black shadow-soft hover:brightness-95"
+                : "bg-accent-500 text-black shadow-soft hover:brightness-95"
             )}
             aria-label={playing ? "Pause" : "Play"}
           >
@@ -171,7 +175,10 @@ export default function AudioPlayer({
               step={0.1}
               value={current}
               onChange={(e) => seek(parseFloat(e.target.value))}
-              className="w-full accent-accent-500 h-1.5"
+              className={clsx(
+                "w-full h-1.5",
+                color === "yellow" ? "accent-yellow-400" : "accent-accent-500"
+              )}
               aria-label="Scrubber"
             />
             <div className="mt-1 flex items-center justify-between text-[11px] text-white/60">
