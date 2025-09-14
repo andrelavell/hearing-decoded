@@ -1,0 +1,26 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #0b0d12;
+  --card: #121621;
+  --text: #e6e9f2;
+  --muted: #98a2b3;
+  --accent: #00c2ff;
+}
+
+html, body {
+  background: linear-gradient(180deg, #0b0d12 0%, #0e1220 100%);
+  color: var(--text);
+}
+
+.container {
+  @apply max-w-5xl mx-auto px-4;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid rgba(255,255,255,0.06);
+  @apply rounded-2xl shadow-soft;
+}
