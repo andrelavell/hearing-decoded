@@ -19,6 +19,7 @@ function parseVtt(vtt: string): Cue[] {
       i++;
       continue;
     }
+    // Optional cue id line
     const maybeTime = lines[i + 1] ? lines[i + 1].trim() : "";
     const timeLine = /-->/.test(line) ? line : maybeTime;
     const timeIdx = /-->/.test(line) ? i : i + 1;
@@ -55,43 +56,6 @@ function formatTime(sec: number) {
   return h > 0 ? `${h}:${m.padStart(2, "0")}:${s}` : `${m}:${s}`;
 }
 
-// Modern icons as SVG components
-const PlayIcon = () => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M8 5v14l11-7z"/>
-  </svg>
-);
-
-const PauseIcon = () => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/>
-  </svg>
-);
-
-const SkipBackIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M11 18V6l-8.5 6 8.5 6zm.5-6l8.5 6V6l-8.5 6z"/>
-  </svg>
-);
-
-const SkipForwardIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M4 18l8.5-6L4 6v12zm9-12v12l8.5-6L13 6z"/>
-  </svg>
-);
-
-const VolumeIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
-  </svg>
-);
-
-const CaptionsIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M19 4H5c-1.11 0-2 .9-2 2v12c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-8 7H9.5v-.5h-2v3h2V13H11v1c0 .55-.45 1-1 1H7c-.55 0-1-.45-1-1v-4c0-.55.45-1 1-1h3c.55 0 1 .45 1 1v1zm7 0h-1.5v-.5h-2v3h2V13H18v1c0 .55-.45 1-1 1h-3c-.55 0-1-.45-1-1v-4c0-.55.45-1 1-1h3c.55 0 1 .45 1 1v1z"/>
-  </svg>
-);
-
 export default function AudioPlayer({
   src,
   captionsVttUrl,
@@ -107,12 +71,11 @@ export default function AudioPlayer({
   const [duration, setDuration] = useState(0);
   const [speed, setSpeed] = useState(1);
   const [volume, setVolume] = useState(1);
+  const [prevVolume, setPrevVolume] = useState(1);
   const [cues, setCues] = useState<Cue[]>([]);
   const [showCaptions, setShowCaptions] = useState(!!captionsVttUrl);
-  const [loading, setLoading] = useState(false);
 
   const activeCue = useMemo(() => cues.find((c) => current >= c.start && current <= c.end)?.text ?? "", [cues, current]);
-  const progress = duration > 0 ? (current / duration) * 100 : 0;
 
   useEffect(() => {
     const a = audioRef.current;
@@ -120,22 +83,16 @@ export default function AudioPlayer({
     const onLoaded = () => {
       setDuration(a.duration || 0);
       onDuration?.(a.duration || 0);
-      setLoading(false);
     };
     const onTime = () => setCurrent(a.currentTime || 0);
     const onEnd = () => setPlaying(false);
-    const onLoadStart = () => setLoading(true);
-    
     a.addEventListener("loadedmetadata", onLoaded);
     a.addEventListener("timeupdate", onTime);
     a.addEventListener("ended", onEnd);
-    a.addEventListener("loadstart", onLoadStart);
-    
     return () => {
       a.removeEventListener("loadedmetadata", onLoaded);
       a.removeEventListener("timeupdate", onTime);
       a.removeEventListener("ended", onEnd);
-      a.removeEventListener("loadstart", onLoadStart);
     };
   }, [onDuration]);
 
@@ -147,6 +104,7 @@ export default function AudioPlayer({
       .catch(() => setCues([]));
   }, [captionsVttUrl]);
 
+  // Keep captions toggle consistent if prop changes
   useEffect(() => {
     setShowCaptions(!!captionsVttUrl);
   }, [captionsVttUrl]);
@@ -162,7 +120,6 @@ export default function AudioPlayer({
       setPlaying(false);
     }
   };
-
   const seek = (t: number) => {
     const a = audioRef.current;
     if (!a) return;
@@ -184,167 +141,255 @@ export default function AudioPlayer({
     a.volume = volume;
   }, [volume]);
 
+  // Keyboard shortcuts: space (play/pause), ← (back 15), → (forward 30), ↑/↓ volume
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
+      const interactive = ["input", "textarea", "select", "button"].includes(tag || "");
+      if (interactive) return; // don't steal focus
+      if (e.code === "Space") {
+        e.preventDefault();
+        toggle();
+      } else if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        skip(-15);
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        skip(30);
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setVolume((v) => Math.min(1, v + 0.05));
+      } else if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setVolume((v) => Math.max(0, v - 0.05));
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [toggle]);
+
+  const toggleMute = () => {
+    if (volume === 0) {
+      setVolume(prevVolume || 1);
+    } else {
+      setPrevVolume(volume);
+      setVolume(0);
+    }
+  };
+
+  const share = async () => {
+    try {
+      const url = typeof window !== "undefined" ? window.location.href : src;
+      if ((navigator as any)?.share) {
+        await (navigator as any).share({ title: "Hearing Decoded", url });
+      } else if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(url);
+        alert("Link copied to clipboard");
+      }
+    } catch {
+      // ignore
+    }
+  };
+
+  const PlayIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" {...props}>
+      <path d="M8 5v14l11-7z" />
+    </svg>
+  );
+  const PauseIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" {...props}>
+      <path d="M6 5h4v14H6zM14 5h4v14h-4z" />
+    </svg>
+  );
+  const BackIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}>
+      <polyline points="11 19 2 12 11 5" />
+      <path d="M22 19V5a7 7 0 0 0-7 7v7" />
+    </svg>
+  );
+  const ForwardIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}>
+      <polyline points="13 19 22 12 13 5" />
+      <path d="M2 19V5a7 7 0 0 1 7 7v7" />
+    </svg>
+  );
+  const VolumeIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}>
+      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+      {volume > 0.66 && <path d="M15 9a5 5 0 0 1 0 6" />}
+      {volume > 0.33 && <path d="M17.5 5a9 9 0 0 1 0 14" />}
+    </svg>
+  );
+  const VolumeMuteIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}>
+      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+      <line x1="23" y1="9" x2="17" y2="15" />
+      <line x1="17" y1="9" x2="23" y2="15" />
+    </svg>
+  );
+
   return (
-    <div className="card-elevated p-8 sm:p-10 max-w-4xl mx-auto">
+    <div className="card p-6 sm:p-8">
       <audio ref={audioRef} src={src} preload="metadata" />
 
-      {/* Captions Display */}
-      {captionsVttUrl && (
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-slate-800">Live Transcript</h3>
+      {/* Subtitles panel */}
+      <div className="mb-6 sm:mb-8">
+        <div className="flex items-center justify-between">
+          <div className="text-sm font-medium text-slate-700">Subtitles</div>
+          {captionsVttUrl ? (
             <button
               onClick={() => setShowCaptions((v) => !v)}
               className={clsx(
-                "inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition-all duration-200",
-                showCaptions 
-                  ? "bg-primary-500 text-white shadow-lg hover:bg-primary-600" 
-                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                "inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm border",
+                showCaptions
+                  ? "bg-accent-500 border-accent-500 text-white"
+                  : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
               )}
               aria-pressed={showCaptions}
               aria-label="Toggle captions"
             >
-              <CaptionsIcon />
-              <span>{showCaptions ? "Hide" : "Show"} Captions</span>
+              <span className="font-semibold">CC</span>
             </button>
-          </div>
-          
-          {showCaptions && (
-            <div className="rounded-2xl bg-gradient-to-br from-slate-50 to-white border border-slate-200 p-6 min-h-[120px] shadow-inner">
-              <div className="text-lg leading-relaxed text-slate-700 font-medium">
-                {activeCue || (
-                  <span className="text-slate-400 italic">
-                    {loading ? "Loading transcript..." : "Transcript will appear here as the episode plays"}
-                  </span>
-                )}
-              </div>
-            </div>
+          ) : (
+            <span className="text-xs text-slate-500">No captions</span>
           )}
         </div>
-      )}
-
-      {/* Progress Bar */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between text-sm font-medium text-slate-600 mb-3">
-          <span>{formatTime(current)}</span>
-          <span className="text-slate-400">•</span>
-          <span>{formatTime(duration)}</span>
-        </div>
-        
-        <div className="relative">
-          <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-gradient-to-r from-primary-500 to-primary-600 rounded-full transition-all duration-150 ease-out"
-              style={{ width: `${progress}%` }}
-            />
+        <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-4 min-h-[64px]">
+          <div className="text-base leading-relaxed whitespace-pre-wrap text-slate-800">
+            {showCaptions ? (activeCue || "…") : "Captions hidden"}
           </div>
-          <input
-            type="range"
-            min={0}
-            max={duration || 0}
-            step={0.1}
-            value={current}
-            onChange={(e) => seek(parseFloat(e.target.value))}
-            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-            aria-label="Seek audio position"
-          />
         </div>
       </div>
 
-      {/* Main Controls */}
-      <div className="flex items-center justify-center gap-6 mb-8">
+      {/* Time + scrubber */}
+      <div className="flex items-center justify-between text-xs text-slate-600">
+        <div>{formatTime(current)}</div>
+        <div>{formatTime(duration)}</div>
+      </div>
+      <div className="mt-2 sm:mt-3">
+        <input
+          type="range"
+          min={0}
+          max={duration || 0}
+          step={0.1}
+          value={current}
+          onChange={(e) => seek(parseFloat(e.target.value))}
+          className="w-full accent-accent-500 h-2"
+          aria-label="Scrubber"
+        />
+      </div>
+
+      {/* Transport controls */}
+      <div className="mt-6 sm:mt-8 flex items-center justify-center gap-8">
         <button
           onClick={() => skip(-15)}
-          className="flex items-center justify-center w-12 h-12 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 transition-all duration-200 hover:shadow-md"
-          aria-label="Rewind 15 seconds"
+          className="hidden sm:inline-flex items-center justify-center rounded-full bg-white border border-slate-200 hover:bg-slate-50 w-12 h-12 text-slate-700"
+          aria-label="Back 15 seconds"
+          title="Back 15s (←)"
         >
-          <SkipBackIcon />
-          <span className="text-xs font-bold ml-1">15</span>
+          <BackIcon className="w-6 h-6" />
         </button>
 
         <button
           onClick={toggle}
-          disabled={loading}
           className={clsx(
-            "flex items-center justify-center w-20 h-20 rounded-full transition-all duration-200 shadow-xl hover:shadow-2xl",
-            loading 
-              ? "bg-slate-300 cursor-not-allowed" 
-              : "bg-gradient-to-br from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 text-white hover:scale-105"
+            "inline-flex items-center justify-center rounded-full w-16 h-16 sm:w-20 sm:h-20",
+            "bg-accent-500 text-white shadow-soft hover:brightness-95"
           )}
           aria-label={playing ? "Pause" : "Play"}
+          title={playing ? "Pause (Space)" : "Play (Space)"}
         >
-          {loading ? (
-            <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
-          ) : playing ? (
-            <PauseIcon />
+          {playing ? (
+            <PauseIcon className="w-7 h-7" />
           ) : (
-            <PlayIcon />
+            <PlayIcon className="w-7 h-7 ml-0.5" />
           )}
         </button>
 
         <button
           onClick={() => skip(30)}
-          className="flex items-center justify-center w-12 h-12 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 transition-all duration-200 hover:shadow-md"
-          aria-label="Fast forward 30 seconds"
+          className="hidden sm:inline-flex items-center justify-center rounded-full bg-white border border-slate-200 hover:bg-slate-50 w-12 h-12 text-slate-700"
+          aria-label="Forward 30 seconds"
+          title="Forward 30s (→)"
         >
-          <span className="text-xs font-bold mr-1">30</span>
-          <SkipForwardIcon />
+          <ForwardIcon className="w-6 h-6" />
         </button>
       </div>
 
-      {/* Secondary Controls */}
-      <div className="flex items-center justify-center gap-8 text-sm">
-        {/* Speed Control */}
-        <div className="flex items-center gap-3">
-          <span className="text-slate-600 font-medium">Speed</span>
+      {/* Settings */}
+      <div className="mt-6 sm:mt-8 flex flex-wrap items-center justify-center gap-3 sm:gap-4 text-sm">
+        <label className="inline-flex items-center gap-2 bg-white border border-slate-200 rounded-full px-3 py-1.5 text-slate-700">
+          <span>Speed</span>
           <select
             value={speed}
             onChange={(e) => setSpeed(parseFloat(e.target.value))}
-            className="bg-slate-100 border border-slate-200 rounded-lg px-3 py-2 text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+            className="bg-transparent outline-none"
           >
-            {[0.5, 0.75, 1, 1.25, 1.5, 1.75, 2].map((s) => (
-              <option key={s} value={s}>{s}×</option>
+            {[0.75, 1, 1.25, 1.5, 1.75, 2].map((s) => (
+              <option key={s} value={s}>{s}x</option>
             ))}
           </select>
-        </div>
+        </label>
 
-        {/* Volume Control */}
-        <div className="flex items-center gap-3">
-          <VolumeIcon />
-          <div className="relative w-24">
-            <input
-              type="range"
-              min={0}
-              max={1}
-              step={0.01}
-              value={volume}
-              onChange={(e) => setVolume(parseFloat(e.target.value))}
-              className="w-full h-2 bg-slate-200 rounded-full appearance-none cursor-pointer slider"
-              aria-label="Volume"
-            />
-            <style jsx>{`
-              .slider::-webkit-slider-thumb {
-                appearance: none;
-                height: 16px;
-                width: 16px;
-                border-radius: 50%;
-                background: #3b82f6;
-                cursor: pointer;
-                box-shadow: 0 2px 6px rgba(59, 130, 246, 0.4);
-              }
-              .slider::-moz-range-thumb {
-                height: 16px;
-                width: 16px;
-                border-radius: 50%;
-                background: #3b82f6;
-                cursor: pointer;
-                border: none;
-                box-shadow: 0 2px 6px rgba(59, 130, 246, 0.4);
-              }
-            `}</style>
-          </div>
-        </div>
+        <label className="inline-flex items-center gap-2 bg-white border border-slate-200 rounded-full px-3 py-1.5 text-slate-700">
+          <span>Volume</span>
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.01}
+            value={volume}
+            onChange={(e) => setVolume(parseFloat(e.target.value))}
+            className="accent-accent-500"
+          />
+        </label>
+
+        <button
+          onClick={toggleMute}
+          className="inline-flex items-center gap-2 bg-white border border-slate-200 rounded-full px-3 py-1.5 text-slate-700"
+          aria-label={volume === 0 ? "Unmute" : "Mute"}
+          title={volume === 0 ? "Unmute" : "Mute"}
+        >
+          {volume === 0 ? (
+            <VolumeMuteIcon className="w-4 h-4" />
+          ) : (
+            <VolumeIcon className="w-4 h-4" />
+          )}
+          <span className="hidden sm:inline">{volume === 0 ? "Muted" : "Mute"}</span>
+        </button>
+
+        <button
+          onClick={share}
+          className="inline-flex items-center gap-2 bg-white border border-slate-200 rounded-full px-3 py-1.5 text-slate-700"
+          aria-label="Share episode"
+          title="Share episode"
+        >
+          <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <circle cx="18" cy="5" r="3" />
+            <circle cx="6" cy="12" r="3" />
+            <circle cx="18" cy="19" r="3" />
+            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+            <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+          </svg>
+          <span className="hidden sm:inline">Share</span>
+        </button>
+
+        <a
+          href={src}
+          download
+          className="inline-flex items-center gap-2 bg-white border border-slate-200 rounded-full px-3 py-1.5 text-slate-700"
+          aria-label="Download MP3"
+          title="Download MP3"
+        >
+          <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="7 10 12 15 17 10" />
+            <line x1="12" y1="15" x2="12" y2="3" />
+          </svg>
+          <span className="hidden sm:inline">Download</span>
+        </a>
       </div>
     </div>
   );
 }
+

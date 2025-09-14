@@ -114,67 +114,67 @@ export default function AdminPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold tracking-tight">Admin</h1>
         {user ? (
-          <button className="px-3 py-1.5 rounded-md bg-white/10" onClick={() => identity?.logout()}>Logout</button>
+          <button className="px-3 py-1.5 rounded-md bg-white border border-slate-200 text-slate-700 hover:bg-slate-50" onClick={() => identity?.logout()}>Logout</button>
         ) : (
-          <button className="px-3 py-1.5 rounded-md bg-accent-500 text-black" onClick={() => identity?.open()}>Login</button>
+          <button className="px-3 py-1.5 rounded-md bg-accent-500 text-white" onClick={() => identity?.open()}>Login</button>
         )}
       </div>
 
       <form onSubmit={handleCreate} className="card p-6 space-y-4">
         <div>
-          <label className="block text-sm text-white/70 mb-1">Title</label>
-          <input className="w-full bg-white/5 px-3 py-2 rounded-lg" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
+          <label className="block text-sm text-slate-600 mb-1">Title</label>
+          <input className="w-full bg-white border border-slate-200 px-3 py-2 rounded-lg text-slate-900" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
         </div>
         <div>
-          <label className="block text-sm text-white/70 mb-1">Body</label>
-          <textarea className="w-full bg-white/5 px-3 py-2 rounded-lg" rows={4} value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} />
+          <label className="block text-sm text-slate-600 mb-1">Body</label>
+          <textarea className="w-full bg-white border border-slate-200 px-3 py-2 rounded-lg text-slate-900" rows={4} value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} />
         </div>
         <div className="flex items-center gap-4">
-          <label className="block text-sm text-white/70">Rating
-            <input type="number" min={0} max={5} step={0.5} className="ml-2 w-24 bg-white/5 px-2 py-1 rounded" value={form.rating} onChange={(e) => setForm({ ...form, rating: parseFloat(e.target.value) })} />
+          <label className="block text-sm text-slate-600">Rating
+            <input type="number" min={0} max={5} step={0.5} className="ml-2 w-24 bg-white border border-slate-200 px-2 py-1 rounded text-slate-900" value={form.rating} onChange={(e) => setForm({ ...form, rating: parseFloat(e.target.value) })} />
           </label>
           <input type="file" accept="audio/mpeg" onChange={(e) => setFile(e.target.files?.[0] || null)} />
-          <button disabled={loading} className="ml-auto px-4 py-2 rounded-lg bg-accent-500 text-black font-semibold">{loading ? "Uploading…" : "Create Episode"}</button>
+          <button disabled={loading} className="ml-auto px-4 py-2 rounded-lg bg-accent-500 text-white font-semibold">{loading ? "Uploading…" : "Create Episode"}</button>
         </div>
       </form>
 
       <div className="space-y-3">
-        <h2 className="text-lg text-white/80">All Episodes</h2>
+        <h2 className="text-lg text-slate-700">All Episodes</h2>
         {episodes.map((e) => (
           <div key={e.id} className="card p-4 flex items-center gap-4">
             <div className="flex-1">
               {editingId === e.id ? (
                 <div className="grid sm:grid-cols-2 gap-3">
                   <label className="text-sm">Title
-                    <input className="w-full bg-white/5 px-2 py-1 rounded ml-2" value={editForm.title} onChange={(ev) => setEditForm({ ...editForm, title: ev.target.value })} />
+                    <input className="w-full bg-white border border-slate-200 px-2 py-1 rounded ml-2 text-slate-900" value={editForm.title} onChange={(ev) => setEditForm({ ...editForm, title: ev.target.value })} />
                   </label>
                   <label className="text-sm">Rating
-                    <input type="number" min={0} max={5} step={0.5} className="w-24 bg-white/5 px-2 py-1 rounded ml-2" value={editForm.rating} onChange={(ev) => setEditForm({ ...editForm, rating: parseFloat(ev.target.value) })} />
+                    <input type="number" min={0} max={5} step={0.5} className="w-24 bg-white border border-slate-200 px-2 py-1 rounded ml-2 text-slate-900" value={editForm.rating} onChange={(ev) => setEditForm({ ...editForm, rating: parseFloat(ev.target.value) })} />
                   </label>
                   <label className="text-sm sm:col-span-2">Body
-                    <textarea className="w-full bg-white/5 px-2 py-1 rounded ml-2" rows={3} value={editForm.body} onChange={(ev) => setEditForm({ ...editForm, body: ev.target.value })} />
+                    <textarea className="w-full bg-white border border-slate-200 px-2 py-1 rounded ml-2 text-slate-900" rows={3} value={editForm.body} onChange={(ev) => setEditForm({ ...editForm, body: ev.target.value })} />
                   </label>
                   <label className="text-sm">Views
-                    <input type="number" min={0} className="w-32 bg-white/5 px-2 py-1 rounded ml-2" value={editForm.views} onChange={(ev) => setEditForm({ ...editForm, views: parseInt(ev.target.value || '0', 10) })} />
+                    <input type="number" min={0} className="w-32 bg-white border border-slate-200 px-2 py-1 rounded ml-2 text-slate-900" value={editForm.views} onChange={(ev) => setEditForm({ ...editForm, views: parseInt(ev.target.value || '0', 10) })} />
                   </label>
                 </div>
               ) : (
                 <>
                   <div className="font-medium">{e.title}</div>
-                  <div className="text-sm text-white/60">{new Date(e.createdAt).toLocaleString()}</div>
+                  <div className="text-sm text-slate-500">{new Date(e.createdAt).toLocaleString()}</div>
                 </>
               )}
             </div>
             {editingId === e.id ? (
               <>
-                <button className="px-3 py-1.5 rounded-md bg-accent-500 text-black" onClick={() => saveEdit(e.id)}>Save</button>
-                <button className="px-3 py-1.5 rounded-md bg-white/10" onClick={() => setEditingId(null)}>Cancel</button>
+                <button className="px-3 py-1.5 rounded-md bg-accent-500 text-white" onClick={() => saveEdit(e.id)}>Save</button>
+                <button className="px-3 py-1.5 rounded-md bg-white border border-slate-200 text-slate-700 hover:bg-slate-50" onClick={() => setEditingId(null)}>Cancel</button>
               </>
             ) : (
               <>
-                <a className="px-3 py-1.5 rounded-md bg-white/10" href={`/episode/${e.id}`}>View</a>
-                <button className="px-3 py-1.5 rounded-md bg-white/10" onClick={() => startEdit(e)}>Edit</button>
-                <button className="px-3 py-1.5 rounded-md bg-white/10" onClick={() => remove(e.id)}>Delete</button>
+                <a className="px-3 py-1.5 rounded-md bg-white border border-slate-200 text-slate-700 hover:bg-slate-50" href={`/episode/${e.id}`}>View</a>
+                <button className="px-3 py-1.5 rounded-md bg-white border border-slate-200 text-slate-700 hover:bg-slate-50" onClick={() => startEdit(e)}>Edit</button>
+                <button className="px-3 py-1.5 rounded-md bg-white border border-slate-200 text-slate-700 hover:bg-slate-50" onClick={() => remove(e.id)}>Delete</button>
               </>
             )}
           </div>
@@ -183,3 +183,4 @@ export default function AdminPage() {
     </div>
   );
 }
+
