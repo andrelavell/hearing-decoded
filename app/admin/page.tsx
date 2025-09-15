@@ -94,9 +94,14 @@ export default function AdminPage() {
     setEpisodes((prev) => prev.filter((e) => e.id !== id));
   }
 
-  function startEdit(e: Omit<Episode, "body">) {
+  async function startEdit(e: Omit<Episode, "body">) {
     setEditingId(e.id);
-    setEditForm({ title: e.title, body: "", rating: e.rating, views: e.views });
+    try {
+      const full = await fetch(`/api/episodes/${e.id}`).then((r) => (r.ok ? r.json() : null));
+      setEditForm({ title: e.title, body: full?.body ?? "", rating: e.rating, views: e.views });
+    } catch {
+      setEditForm({ title: e.title, body: "", rating: e.rating, views: e.views });
+    }
   }
 
   async function saveEdit(id: string) {
